@@ -12,6 +12,11 @@ doc_events = {
         "validate": "workflow_manager.router.validate",
         "before_save": "workflow_manager.router.before_save",
         "before_submit": "workflow_manager.router.before_submit"
+    },
+    "Purchase Invoice": {
+        "validate": "workflow_manager.router.validate",
+        "before_save": "workflow_manager.router.before_save",
+        "before_submit": "workflow_manager.router.before_submit"
     }
 }
 

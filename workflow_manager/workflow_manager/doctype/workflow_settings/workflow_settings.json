@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2026-07-04 16:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_purchase_invoice_approval_workflow"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_purchase_invoice_approval_workflow",
+   "fieldtype": "Check",
+   "label": "Enable Purchase Invoice Approval Workflow"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-07-04 16:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Workflow Manager",
+ "name": "Workflow Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

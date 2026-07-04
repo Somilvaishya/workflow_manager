@@ -25,6 +25,9 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
                 cust.gstin = f"07CCQPJ{rand_num}N1ZE" # Valid-like structure
                 cust.insert(ignore_permissions=True)
                 self.b2b_customer = cust.name
+            
+            # Ensure the selected or created B2B customer has a valid GSTIN
+            frappe.db.set_value("Customer", self.b2b_customer, "gstin", "07CCQPJ9999N1ZE")
 
         if not frappe.db.exists("Customer", self.b2c_customer):
             customers = frappe.get_all("Customer", filters={"gstin": ["is", "not", "set"]}, limit=1)
@@ -60,6 +63,8 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         si.customer = self.b2c_customer
         si.debit_to = "Debtors - KGOPL"
         si.location = "KGOPL Kamla Nagar, Agra"
+        si.company_gstin = "09AAJCK9474A1Z9"
+        si.place_of_supply = "09-Uttar Pradesh"
         si.is_return = 1
         si.update_stock = 1
         si.append("items", {
@@ -80,7 +85,7 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         apply_workflow(si, "Submit")
         self.assertEqual(si.workflow_state, "Submitted")
         self.assertEqual(si.docstatus, 1)
-
+ 
     def test_b2b_customer_return_complete(self):
         # Return for B2B customer with all fields filled
         si = frappe.new_doc("Sales Invoice")
@@ -88,6 +93,8 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         si.customer = self.b2b_customer
         si.debit_to = "Debtors - KGOPL"
         si.location = "KGOPL Kamla Nagar, Agra"
+        si.company_gstin = "09AAJCK9474A1Z9"
+        si.place_of_supply = "09-Uttar Pradesh"
         si.is_return = 1
         si.update_stock = 1
         si.custom_customer_debit_note_no = "DN-123"
@@ -111,7 +118,7 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         apply_workflow(si, "Submit")
         self.assertEqual(si.workflow_state, "Submitted")
         self.assertEqual(si.docstatus, 1)
-
+ 
     def test_b2b_customer_return_incomplete_direct_submit_fails(self):
         # Return for B2B customer with missing fields
         si = frappe.new_doc("Sales Invoice")
@@ -119,6 +126,8 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         si.customer = self.b2b_customer
         si.debit_to = "Debtors - KGOPL"
         si.location = "KGOPL Kamla Nagar, Agra"
+        si.company_gstin = "09AAJCK9474A1Z9"
+        si.place_of_supply = "09-Uttar Pradesh"
         si.is_return = 1
         si.update_stock = 1
         si.append("items", {
@@ -137,7 +146,7 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         # Direct submit (bypassing workflow) should raise ValidationError
         with self.assertRaises(frappe.ValidationError):
             si.submit()
-
+ 
         # First transition it to Pending Debit Note Approval by calling workflow Submit
         from frappe.model.workflow import apply_workflow
         apply_workflow(si, "Submit")

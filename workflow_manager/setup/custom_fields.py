@@ -41,6 +41,56 @@ def setup_custom_fields():
                 "hidden": 1,
                 "read_only": 1
             }
+        ],
+        "Purchase Invoice": [
+            {
+                "fieldname": "custom_wf_pending_approval",
+                "label": "WF Pending Approval",
+                "fieldtype": "Check",
+                "insert_after": "is_paid",
+                "hidden": 1,
+                "read_only": 1
+            },
+            {
+                "fieldname": "custom_wf_direct_submit",
+                "label": "WF Direct Submit",
+                "fieldtype": "Check",
+                "insert_after": "custom_wf_pending_approval",
+                "hidden": 1,
+                "read_only": 1
+            },
+            {
+                "fieldname": "custom_wf_flag_1",
+                "label": "WF Flag 1",
+                "fieldtype": "Check",
+                "insert_after": "custom_wf_direct_submit",
+                "hidden": 1,
+                "read_only": 1
+            },
+            {
+                "fieldname": "custom_wf_flag_2",
+                "label": "WF Flag 2",
+                "fieldtype": "Check",
+                "insert_after": "custom_wf_flag_1",
+                "hidden": 1,
+                "read_only": 1
+            },
+            {
+                "fieldname": "custom_wf_flag_3",
+                "label": "WF Flag 3",
+                "fieldtype": "Check",
+                "insert_after": "custom_wf_flag_2",
+                "hidden": 1,
+                "read_only": 1
+            },
+            {
+                "fieldname": "custom_wf_processed",
+                "label": "WF Processed",
+                "fieldtype": "Check",
+                "insert_after": "custom_wf_flag_3",
+                "hidden": 1,
+                "read_only": 1
+            }
         ]
     }
     
