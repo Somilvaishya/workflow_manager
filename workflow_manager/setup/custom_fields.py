@@ -90,8 +90,54 @@ def setup_custom_fields():
                 "insert_after": "custom_wf_flag_3",
                 "hidden": 1,
                 "read_only": 1
+            },
+            {
+                "fieldname": "bns_ewaybill_date",
+                "label": "e-Waybill Date",
+                "fieldtype": "Date",
+                "insert_after": "bill_date"
+            },
+            {
+                "fieldname": "bns_ewaybill_attachment",
+                "label": "e-Waybill",
+                "fieldtype": "Attach",
+                "insert_after": "bns_ewaybill_date"
+            }
+        ],
+        "Purchase Receipt": [
+            {
+                "fieldname": "supplier_invoice_section",
+                "label": "Supplier Invoice",
+                "fieldtype": "Section Break",
+                "insert_after": "lr_date",
+                "collapsible": 1
+            },
+            {
+                "fieldname": "bill_no",
+                "label": "Supplier Invoice No",
+                "fieldtype": "Data",
+                "insert_after": "supplier_invoice_section"
+            },
+            {
+                "fieldname": "bill_date",
+                "label": "Supplier Invoice Date",
+                "fieldtype": "Date",
+                "insert_after": "bill_no"
+            },
+            {
+                "fieldname": "bns_ewaybill_date",
+                "label": "e-Waybill Date",
+                "fieldtype": "Date",
+                "insert_after": "bill_date"
+            },
+            {
+                "fieldname": "bns_ewaybill_attachment",
+                "label": "e-Waybill",
+                "fieldtype": "Attach",
+                "insert_after": "bns_ewaybill_date"
             }
         ]
     }
     
     create_custom_fields(custom_fields, update=True)
+

@@ -22,9 +22,13 @@ doc_events = {
 
 # Client Scripts
 # --------------
+app_include_js = "/assets/workflow_manager/js/workflow_utils.js"
+
 doctype_js = {
-    "Sales Invoice": "public/js/sales_invoice.js"
+    "Sales Invoice": "public/js/sales_invoice.js",
+    "Purchase Invoice": "public/js/purchase_invoice.js"
 }
+
 
 # Installation & Migration Hooks
 # ------------------------------

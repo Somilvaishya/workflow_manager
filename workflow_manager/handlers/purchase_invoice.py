@@ -1,16 +1,20 @@
 import frappe
+from workflow_manager.mappers.purchase_receipt import map_receipt_fields_to_invoice
 
 def validate(doc):
     """
     Validation logic for Purchase Invoice.
     """
     populate_workflow_fields(doc)
+    map_receipt_fields_to_invoice(doc)
 
 def before_save(doc):
     """
     Pre-save logic for Purchase Invoice.
     """
     populate_workflow_fields(doc)
+    map_receipt_fields_to_invoice(doc)
+
 
 def before_submit(doc):
     """
@@ -81,3 +85,49 @@ def populate_workflow_fields(doc):
     doc.custom_wf_pending_approval = 1 if (has_items_without_po and not is_internal_supplier) else 0
     doc.custom_wf_direct_submit = 1 if (has_items_with_po or is_internal_supplier) else 0
     doc.custom_wf_processed = 1
+
+@frappe.whitelist()
+def handle_recorrection(docname, correction_message):
+    if not correction_message:
+        frappe.throw("Correction Message is required", frappe.ValidationError)
+
+    doc = frappe.get_doc("Purchase Invoice", docname)
+
+    # Validate that current user has permission to perform the transition
+    from frappe.model.workflow import get_transitions, get_workflow
+    workflow = get_workflow(doc.doctype)
+    transitions = get_transitions(doc, workflow)
+
+    allowed_actions = [t.action for t in transitions]
+    if "Pending Recorrection" not in allowed_actions:
+        frappe.throw(
+            "You are not authorized to perform the 'Pending Recorrection' action, or the document is not in the correct state.",
+            frappe.PermissionError
+        )
+
+    # 1. Apply the workflow transition "Pending Recorrection"
+    from frappe.model.workflow import apply_workflow
+    apply_workflow(doc, "Pending Recorrection")
+
+    # 2. Automatically create a Comment on the same Purchase Invoice
+    comment_text = f"Correction requested by Accounts Manager.\n\nReason:\n{correction_message}"
+    doc.add_comment(
+        comment_type="Comment",
+        text=comment_text
+    )
+
+    # 3. Send Raven notification to the document creator (doc.owner)
+    from workflow_manager.utils.notifications import send_raven_notification
+    notification_message = (
+        f"Your Purchase Invoice {doc.name} has been sent back for correction.\n\n"
+        f"Reason:\n{correction_message}"
+    )
+    send_raven_notification(
+        recipient=doc.owner,
+        message=notification_message,
+        link_doctype="Purchase Invoice",
+        link_document=doc.name
+    )
+
+    return {"status": "success"}
+

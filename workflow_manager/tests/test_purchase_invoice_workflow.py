@@ -51,6 +51,30 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         # Ensure we start as Administrator
         frappe.set_user("Administrator")
 
+        # Run custom field setup to make sure fields are provisioned
+        from workflow_manager.setup.custom_fields import setup_custom_fields
+        setup_custom_fields()
+
+        # Ensure Administrator has a Raven User profile
+        if not frappe.db.exists("Raven User", {"user": "Administrator"}):
+            ru = frappe.new_doc("Raven User")
+            ru.user = "Administrator"
+            ru.full_name = "Administrator"
+            ru.insert(ignore_permissions=True)
+
+        # Ensure Accounts Bot exists
+        if not frappe.db.exists("Raven Bot", "Accounts Bot"):
+            if not frappe.db.exists("Raven User", "accounts_bot"):
+                ru = frappe.new_doc("Raven User")
+                ru.name = "accounts_bot"
+                ru.full_name = "Accounts Bot User"
+                ru.insert(ignore_permissions=True)
+            bot = frappe.new_doc("Raven Bot")
+            bot.bot_name = "Accounts Bot"
+            bot.raven_user = "accounts_bot"
+            bot.insert(ignore_permissions=True)
+
+
     def tearDown(self):
         self.password_patcher.stop()
         frappe.set_user("Administrator")
@@ -210,3 +234,176 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         apply_workflow(pi, "Submit")
         self.assertEqual(pi.workflow_state, "Submitted")
         self.assertEqual(pi.docstatus, 1)
+
+    def test_recorrection_workflow(self):
+        # Create a Purchase Invoice that goes to Pending Approval
+        pi = frappe.new_doc("Purchase Invoice")
+        pi.company = "K.G. Overseas Private Limited"
+        pi.supplier = self.external_supplier
+        pi.location = "Gurukul, Faridabad"
+        pi.company_gstin = "06AAJCK9474A1ZF"
+        pi.place_of_supply = "06-Haryana"
+        pi.bill_no = "BILL-500"
+        pi.bill_date = "2026-07-04"
+        pi.update_stock = 1
+        pi.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "expense_account": "Stock In Hand - KGOPL",
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL"
+        })
+        pi.save(ignore_permissions=True)
+
+        # Transition to Pending Approval first
+        from frappe.model.workflow import apply_workflow
+        apply_workflow(pi, "Submit for Approval")
+        self.assertEqual(pi.workflow_state, "Pending Approval")
+
+        # 1. Test empty correction message raises exception
+        from workflow_manager.handlers.purchase_invoice import handle_recorrection
+        with self.assertRaises(frappe.ValidationError):
+            handle_recorrection(pi.name, "")
+
+        # 2. Test unauthorized user permission check
+        frappe.set_user("demo@example.com")
+        with self.assertRaises(frappe.PermissionError):
+            handle_recorrection(pi.name, "Need to link PO")
+
+        # 3. Transition to Pending Fix as Administrator (who has Accounts Manager role)
+        frappe.set_user("Administrator")
+        res = handle_recorrection(pi.name, "Please fix the rates")
+        self.assertEqual(res.get("status"), "success")
+
+        # Verify workflow state changed
+        pi.reload()
+        self.assertEqual(pi.workflow_state, "Pending Fix")
+
+        # Verify Comment is created in database
+        comments = frappe.get_all(
+            "Comment",
+            filters={"reference_doctype": "Purchase Invoice", "reference_name": pi.name},
+            fields=["content"]
+        )
+        self.assertTrue(any("Please fix the rates" in c.content for c in comments))
+
+        # Verify Raven message was sent/inserted
+        messages = frappe.get_all(
+            "Raven Message",
+            filters={"link_doctype": "Purchase Invoice", "link_document": pi.name},
+            fields=["text"]
+        )
+        self.assertTrue(any("Please fix the rates" in m.text for m in messages))
+
+    def test_purchase_receipt_mapping_single(self):
+        # 1. Create a Purchase Receipt with supplier invoice fields populated
+        pr = frappe.new_doc("Purchase Receipt")
+        pr.company = "K.G. Overseas Private Limited"
+        pr.supplier = self.external_supplier
+        pr.location = "Gurukul, Faridabad"
+        pr.posting_date = "2026-07-04"
+        pr.bill_no = "INV-PR-999"
+        pr.bill_date = "2026-07-04"
+        pr.bns_ewaybill_date = "2026-07-04"
+        pr.bns_ewaybill_attachment = "/private/files/ewaybill.pdf"
+        pr.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL"
+        })
+        pr.save(ignore_permissions=True)
+        pr.submit()
+
+        # 2. Create a Purchase Invoice referencing this Purchase Receipt
+        pi = frappe.new_doc("Purchase Invoice")
+        pi.company = "K.G. Overseas Private Limited"
+        pi.supplier = self.external_supplier
+        pi.location = "Gurukul, Faridabad"
+        pi.posting_date = "2026-07-04"
+        pi.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "purchase_receipt": pr.name,
+            "pr_detail": pr.items[0].name,
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL",
+            "expense_account": "Stock In Hand - KGOPL"
+        })
+
+        # Save triggers validate/before_save which calls our mapper
+        pi.save(ignore_permissions=True)
+
+        # Verify fields are mapped correctly
+        self.assertEqual(pi.bill_no, "INV-PR-999")
+        self.assertEqual(pi.bill_date, frappe.utils.getdate("2026-07-04"))
+        self.assertEqual(pi.bns_ewaybill_date, frappe.utils.getdate("2026-07-04"))
+        self.assertEqual(pi.bns_ewaybill_attachment, "/private/files/ewaybill.pdf")
+
+
+    def test_purchase_receipt_mapping_conflicting(self):
+        # 1. Create PR 1
+        pr1 = frappe.new_doc("Purchase Receipt")
+        pr1.company = "K.G. Overseas Private Limited"
+        pr1.supplier = self.external_supplier
+        pr1.location = "Gurukul, Faridabad"
+        pr1.posting_date = "2026-07-04"
+        pr1.bill_no = "INV-CONF-1"
+        pr1.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL"
+        })
+        pr1.save(ignore_permissions=True)
+        pr1.submit()
+
+        # 2. Create PR 2 with a different bill_no
+        pr2 = frappe.new_doc("Purchase Receipt")
+        pr2.company = "K.G. Overseas Private Limited"
+        pr2.supplier = self.external_supplier
+        pr2.location = "Gurukul, Faridabad"
+        pr2.posting_date = "2026-07-04"
+        pr2.bill_no = "INV-CONF-2"
+        pr2.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL"
+        })
+        pr2.save(ignore_permissions=True)
+        pr2.submit()
+
+        # 3. Create a consolidated Purchase Invoice
+        pi = frappe.new_doc("Purchase Invoice")
+        pi.company = "K.G. Overseas Private Limited"
+        pi.supplier = self.external_supplier
+        pi.location = "Gurukul, Faridabad"
+        pi.posting_date = "2026-07-04"
+        pi.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "purchase_receipt": pr1.name,
+            "pr_detail": pr1.items[0].name,
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL",
+            "expense_account": "Stock In Hand - KGOPL"
+        })
+        pi.append("items", {
+            "item_code": "P2381",
+            "qty": 1.0,
+            "rate": 285.0,
+            "purchase_receipt": pr2.name,
+            "pr_detail": pr2.items[0].name,
+            "warehouse": "Purchase Area - Gurukul HR - KGOPL",
+            "expense_account": "Stock In Hand - KGOPL"
+        })
+
+        # Save to trigger mapping
+        pi.save(ignore_permissions=True)
+
+        # Since bill_no conflicts, it should NOT be mapped
+        self.assertFalse(pi.bill_no)
+
+
+
