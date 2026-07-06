@@ -103,11 +103,11 @@ def setup_purchase_invoice_workflow():
 
     # Set states
     workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": "All"})
-    workflow.append("states", {"state": "Pending Approval", "doc_status": "0", "allow_edit": "Accounts Manager"})
+    workflow.append("states", {"state": "Pending Approval", "doc_status": "0", "allow_edit": "Accounts Approver"})
     workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": "All"})
-    workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": "Accounts Manager"})
-    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": "Accounts Manager"})
-    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": "Accounts Manager"})
+    workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": "Accounts Approver"})
+    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": "Accounts Approver"})
+    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": "Accounts Approver"})
 
     # Set transitions
     workflow.append("transitions", {
@@ -121,14 +121,14 @@ def setup_purchase_invoice_workflow():
         "state": "Draft",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "Accounts Manager",
+        "allowed": "Accounts Approver",
         "condition": "doc.custom_wf_direct_submit == 1"
     })
     workflow.append("transitions", {
         "state": "Pending Approval",
         "action": "Pending Recorrection",
         "next_state": "Pending Fix",
-        "allowed": "Accounts Manager"
+        "allowed": "Accounts Approver"
     })
     workflow.append("transitions", {
         "state": "Pending Fix",
@@ -141,19 +141,19 @@ def setup_purchase_invoice_workflow():
         "state": "Pending Approval",
         "action": "Approve",
         "next_state": "Approved",
-        "allowed": "Accounts Manager"
+        "allowed": "Accounts Approver"
     })
     workflow.append("transitions", {
         "state": "Approved",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "Accounts Manager"
+        "allowed": "Accounts Approver"
     })
     workflow.append("transitions", {
         "state": "Submitted",
         "action": "Cancel",
         "next_state": "Cancelled",
-        "allowed": "Accounts Manager"
+        "allowed": "Accounts Approver"
     })
 
     workflow.insert(ignore_permissions=True)

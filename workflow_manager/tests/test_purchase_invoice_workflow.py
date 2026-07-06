@@ -55,6 +55,11 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         from workflow_manager.setup.custom_fields import setup_custom_fields
         setup_custom_fields()
 
+        # Run workflow setup to apply workflow changes
+        from workflow_manager.setup.workflow import setup_workflow
+        setup_workflow()
+
+
         # Ensure Administrator has a Raven User profile
         if not frappe.db.exists("Raven User", {"user": "Administrator"}):
             ru = frappe.new_doc("Raven User")
@@ -146,13 +151,13 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         self.assertEqual(pi.workflow_state, "Pending Approval")
         self.assertEqual(pi.docstatus, 0)
 
-        # Test role check on submit (demo user does not have Accounts Manager role)
+        # Test role check on submit (demo user does not have Accounts Approver role)
         frappe.set_user("demo@example.com")
         from frappe.model.workflow import WorkflowTransitionError
         with self.assertRaises((frappe.PermissionError, WorkflowTransitionError)):
             apply_workflow(pi, "Approve")
 
-        # Approve and Submit as Accounts Manager/Administrator
+        # Approve and Submit as Accounts Approver/Administrator
         frappe.set_user("Administrator")
         apply_workflow(pi, "Approve")
         self.assertEqual(pi.workflow_state, "Approved")
@@ -270,7 +275,7 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         with self.assertRaises(frappe.PermissionError):
             handle_recorrection(pi.name, "Need to link PO")
 
-        # 3. Transition to Pending Fix as Administrator (who has Accounts Manager role)
+        # 3. Transition to Pending Fix as Administrator (who has Accounts Approver role)
         frappe.set_user("Administrator")
         res = handle_recorrection(pi.name, "Please fix the rates")
         self.assertEqual(res.get("status"), "success")

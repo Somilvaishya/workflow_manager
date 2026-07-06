@@ -39,11 +39,11 @@ def before_submit(doc):
                 frappe.ValidationError
             )
 
-    # Enforce role restriction on submit (must be Accounts Manager or Administrator)
+    # Enforce role restriction on submit (must be Accounts Approver or Administrator)
     user_roles = frappe.get_roles(frappe.session.user)
-    if "Accounts Manager" not in user_roles and frappe.session.user != "Administrator":
+    if "Accounts Approver" not in user_roles and frappe.session.user != "Administrator":
         frappe.throw(
-            "Only users with the Accounts Manager role can submit this Purchase Invoice.",
+            "Only users with the Accounts Approver role can submit this Purchase Invoice.",
             frappe.PermissionError
         )
 
@@ -110,7 +110,7 @@ def handle_recorrection(docname, correction_message):
     apply_workflow(doc, "Pending Recorrection")
 
     # 2. Automatically create a Comment on the same Purchase Invoice
-    comment_text = f"Correction requested by Accounts Manager.\n\nReason:\n{correction_message}"
+    comment_text = f"Correction requested by Accounts Approver.\n\nReason:\n{correction_message}"
     doc.add_comment(
         comment_type="Comment",
         text=comment_text
