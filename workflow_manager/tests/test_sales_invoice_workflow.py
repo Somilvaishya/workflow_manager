@@ -52,6 +52,33 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         # Ensure we start as Administrator
         frappe.set_user("Administrator")
 
+        # Run custom field setup to make sure fields are provisioned
+        from workflow_manager.setup.custom_fields import setup_custom_fields
+        setup_custom_fields()
+
+        # Run workflow setup to apply workflow changes
+        from workflow_manager.setup.workflow import setup_workflow
+        setup_workflow()
+
+        # Ensure Administrator has a Raven User profile
+        if not frappe.db.exists("Raven User", {"user": "Administrator"}):
+            ru = frappe.new_doc("Raven User")
+            ru.user = "Administrator"
+            ru.full_name = "Administrator"
+            ru.insert(ignore_permissions=True)
+
+        # Ensure Accounts Bot exists
+        if not frappe.db.exists("Raven Bot", "Accounts Bot"):
+            if not frappe.db.exists("Raven User", "accounts_bot"):
+                ru = frappe.new_doc("Raven User")
+                ru.name = "accounts_bot"
+                ru.full_name = "Accounts Bot User"
+                ru.insert(ignore_permissions=True)
+            bot = frappe.new_doc("Raven Bot")
+            bot.bot_name = "Accounts Bot"
+            bot.raven_user = "accounts_bot"
+            bot.insert(ignore_permissions=True)
+
     def tearDown(self):
         self.password_patcher.stop()
         frappe.set_user("Administrator")
@@ -166,3 +193,77 @@ class TestSalesInvoiceWorkflow(FrappeTestCase):
         apply_workflow(si, "Approve")
         self.assertEqual(si.workflow_state, "Submitted")
         self.assertEqual(si.docstatus, 1)
+
+    def test_recorrection_workflow(self):
+        # Create an incomplete return invoice for B2B customer (goes to Pending Debit Note Approval)
+        si = frappe.new_doc("Sales Invoice")
+        si.company = "K.G. Overseas Private Limited"
+        si.customer = self.b2b_customer
+        si.debit_to = "Debtors - KGOPL"
+        si.location = "KGOPL Kamla Nagar, Agra"
+        si.company_gstin = "09AAJCK9474A1Z9"
+        si.place_of_supply = "09-Uttar Pradesh"
+        si.is_return = 1
+        si.update_stock = 1
+        si.append("items", {
+            "item_code": "CS125",
+            "qty": -1.0,
+            "rate": 350.0,
+            "income_account": "Sales - KGOPL",
+            "warehouse": "Kamla Nagar, Agra - KGOPL"
+        })
+        si.save(ignore_permissions=True)
+
+        # Transition it to Pending Debit Note Approval by calling workflow Submit
+        from frappe.model.workflow import apply_workflow
+        apply_workflow(si, "Submit")
+        self.assertEqual(si.workflow_state, "Pending Debit Note Approval")
+
+        # 1. Test empty correction message raises exception
+        from workflow_manager.handlers.sales_invoice import handle_recorrection
+        with self.assertRaises(frappe.ValidationError):
+            handle_recorrection(si.name, "")
+
+        # 2. Test unauthorized user permission check
+        frappe.set_user("demo@example.com")
+        with self.assertRaises(frappe.PermissionError):
+            handle_recorrection(si.name, "Missing debit note")
+
+        # 3. Transition to Pending Fix as Administrator (who has Accounts Approver role)
+        frappe.set_user("Administrator")
+        res = handle_recorrection(si.name, "Please attach scanned copy of debit note")
+        self.assertEqual(res.get("status"), "success")
+
+        # Verify workflow state changed to Pending Fix
+        si.reload()
+        self.assertEqual(si.workflow_state, "Pending Fix")
+
+        # Verify Comment is created in database
+        comments = frappe.get_all(
+            "Comment",
+            filters={"reference_doctype": "Sales Invoice", "reference_name": si.name},
+            fields=["content"]
+        )
+        self.assertTrue(any("Please attach scanned copy of debit note" in c.content for c in comments))
+        self.assertTrue(any("Correction Requested" in c.content for c in comments))
+
+        # Verify Raven message was sent/inserted
+        messages = frappe.get_all(
+            "Raven Message",
+            filters={"link_doctype": "Sales Invoice", "link_document": si.name},
+            fields=["text"]
+        )
+        self.assertTrue(any("Please attach scanned copy of debit note" in m.text for m in messages))
+
+        # 4. Save and Submit from Pending Fix
+        # Fill in the debit note details
+        si.custom_customer_debit_note_no = "DN-456"
+        si.custom_debit_note_date = "2026-07-06"
+        si.custom_debit_note_attachment = "/private/files/debit_note_fixed.pdf"
+        si.save(ignore_permissions=True)
+
+        # Submit should now transition directly to Submitted because complete is 1
+        apply_workflow(si, "Submit")
+        self.assertEqual(si.workflow_state, "Submitted")
+        self.assertEqual(si.docstatus, 1)
+

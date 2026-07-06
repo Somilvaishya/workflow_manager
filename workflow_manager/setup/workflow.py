@@ -48,6 +48,8 @@ def setup_sales_invoice_workflow():
     # Set states
     workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": "All"})
     workflow.append("states", {"state": "Pending Debit Note Approval", "doc_status": "0", "allow_edit": "Accounts Approver"})
+    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": "Accounts Approver"})
     workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": "Accounts Approver"})
     workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": "Accounts Approver"})
 
@@ -74,9 +76,23 @@ def setup_sales_invoice_workflow():
     })
     workflow.append("transitions", {
         "state": "Pending Debit Note Approval",
-        "action": "Reject",
-        "next_state": "Draft",
+        "action": "Pending Recorrection",
+        "next_state": "Pending Fix",
         "allowed": "Accounts Approver"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Fix",
+        "action": "Submit",
+        "next_state": "Pending Debit Note Approval",
+        "allowed": "All",
+        "condition": "doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Fix",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "All",
+        "condition": "not (doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0)"
     })
     workflow.append("transitions", {
         "state": "Submitted",

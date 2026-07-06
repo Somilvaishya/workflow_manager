@@ -306,6 +306,8 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         pr.company = "K.G. Overseas Private Limited"
         pr.supplier = self.external_supplier
         pr.location = "Gurukul, Faridabad"
+        pr.company_gstin = "06AAJCK9474A1ZF"
+        pr.place_of_supply = "06-Haryana"
         pr.posting_date = "2026-07-04"
         pr.bill_no = "INV-PR-999"
         pr.bill_date = "2026-07-04"
@@ -325,6 +327,8 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         pi.company = "K.G. Overseas Private Limited"
         pi.supplier = self.external_supplier
         pi.location = "Gurukul, Faridabad"
+        pi.company_gstin = "06AAJCK9474A1ZF"
+        pi.place_of_supply = "06-Haryana"
         pi.posting_date = "2026-07-04"
         pi.append("items", {
             "item_code": "P2381",
@@ -352,6 +356,8 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         pr1.company = "K.G. Overseas Private Limited"
         pr1.supplier = self.external_supplier
         pr1.location = "Gurukul, Faridabad"
+        pr1.company_gstin = "06AAJCK9474A1ZF"
+        pr1.place_of_supply = "06-Haryana"
         pr1.posting_date = "2026-07-04"
         pr1.bill_no = "INV-CONF-1"
         pr1.append("items", {
@@ -368,6 +374,8 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         pr2.company = "K.G. Overseas Private Limited"
         pr2.supplier = self.external_supplier
         pr2.location = "Gurukul, Faridabad"
+        pr2.company_gstin = "06AAJCK9474A1ZF"
+        pr2.place_of_supply = "06-Haryana"
         pr2.posting_date = "2026-07-04"
         pr2.bill_no = "INV-CONF-2"
         pr2.append("items", {
@@ -384,6 +392,8 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
         pi.company = "K.G. Overseas Private Limited"
         pi.supplier = self.external_supplier
         pi.location = "Gurukul, Faridabad"
+        pi.company_gstin = "06AAJCK9474A1ZF"
+        pi.place_of_supply = "06-Haryana"
         pi.posting_date = "2026-07-04"
         pi.append("items", {
             "item_code": "P2381",
@@ -409,6 +419,7 @@ class TestPurchaseInvoiceWorkflow(FrappeTestCase):
 
         # Since bill_no conflicts, it should NOT be mapped
         self.assertFalse(pi.bill_no)
+
 
 
 
