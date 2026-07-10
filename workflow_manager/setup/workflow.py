@@ -9,7 +9,8 @@ def setup_workflow():
         "Cancelled",
         "Pending Approval",
         "Pending Fix",
-        "Approved"
+        "Approved",
+        "Rejected"
     ]
     for s in states:
         if not frappe.db.exists("Workflow State", s):
@@ -30,6 +31,9 @@ def setup_workflow():
 
     # 4. Create or update Purchase Invoice Workflow
     setup_purchase_invoice_workflow()
+
+    # 5. Create or update Journal Entry Workflow
+    setup_journal_entry_workflow()
 
 
 def setup_sales_invoice_workflow():
@@ -152,6 +156,105 @@ def setup_purchase_invoice_workflow():
         "next_state": "Pending Approval",
         "allowed": "All",
         "condition": "doc.custom_wf_pending_approval == 1"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Approval",
+        "action": "Approve",
+        "next_state": "Approved",
+        "allowed": "Accounts Approver"
+    })
+    workflow.append("transitions", {
+        "state": "Approved",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "Accounts Approver"
+    })
+    workflow.append("transitions", {
+        "state": "Submitted",
+        "action": "Cancel",
+        "next_state": "Cancelled",
+        "allowed": "Accounts Approver"
+    })
+
+    workflow.insert(ignore_permissions=True)
+
+
+def setup_journal_entry_workflow():
+    workflow_name = "Journal Entry Approval Workflow"
+    
+    if frappe.db.exists("Workflow", workflow_name):
+        frappe.delete_doc("Workflow", workflow_name, ignore_permissions=True)
+
+    workflow = frappe.new_doc("Workflow")
+    workflow.workflow_name = workflow_name
+    workflow.document_type = "Journal Entry"
+    workflow.is_active = 1
+    workflow.override_status = 0
+    workflow.workflow_state_field = "workflow_state"
+
+    # Set states
+    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Pending Approval", "doc_status": "0", "allow_edit": "Accounts Approver"})
+    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": "Accounts Approver"})
+    workflow.append("states", {"state": "Rejected", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": "Accounts Approver"})
+    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": "Accounts Approver"})
+
+    # Set transitions
+    workflow.append("transitions", {
+        "state": "Draft",
+        "action": "Submit for Approval",
+        "next_state": "Pending Approval",
+        "allowed": "All",
+        "condition": "doc.custom_je_pending_approval == 1"
+    })
+    workflow.append("transitions", {
+        "state": "Draft",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "Accounts Approver",
+        "condition": "doc.custom_je_pending_approval == 0"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Approval",
+        "action": "Pending Recorrection",
+        "next_state": "Pending Fix",
+        "allowed": "Accounts Approver"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Approval",
+        "action": "Reject",
+        "next_state": "Rejected",
+        "allowed": "Accounts Approver"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Fix",
+        "action": "Submit for Approval",
+        "next_state": "Pending Approval",
+        "allowed": "All",
+        "condition": "doc.custom_je_pending_approval == 1"
+    })
+    workflow.append("transitions", {
+        "state": "Pending Fix",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "Accounts Approver",
+        "condition": "doc.custom_je_pending_approval == 0"
+    })
+    workflow.append("transitions", {
+        "state": "Rejected",
+        "action": "Submit for Approval",
+        "next_state": "Pending Approval",
+        "allowed": "All",
+        "condition": "doc.custom_je_pending_approval == 1"
+    })
+    workflow.append("transitions", {
+        "state": "Rejected",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "Accounts Approver",
+        "condition": "doc.custom_je_pending_approval == 0"
     })
     workflow.append("transitions", {
         "state": "Pending Approval",

@@ -149,6 +149,24 @@ def setup_custom_fields():
                 "fieldtype": "Attach",
                 "insert_after": "bns_ewaybill_date"
             }
+        ],
+        "Account": [
+            {
+                "fieldname": "bns_suspense_account",
+                "label": "Suspense Account",
+                "fieldtype": "Check",
+                "insert_after": "is_group"
+            }
+        ],
+        "Journal Entry": [
+            {
+                "fieldname": "custom_je_pending_approval",
+                "label": "JE Pending Approval",
+                "fieldtype": "Check",
+                "insert_after": "posting_date",
+                "hidden": 1,
+                "read_only": 1
+            }
         ]
     }
     

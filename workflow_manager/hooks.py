@@ -17,6 +17,11 @@ doc_events = {
         "validate": "workflow_manager.router.validate",
         "before_save": "workflow_manager.router.before_save",
         "before_submit": "workflow_manager.router.before_submit"
+    },
+    "Journal Entry": {
+        "validate": "workflow_manager.router.validate",
+        "before_save": "workflow_manager.router.before_save",
+        "before_submit": "workflow_manager.router.before_submit"
     }
 }
 
@@ -26,7 +31,8 @@ app_include_js = "/assets/workflow_manager/js/workflow_utils.js"
 
 doctype_js = {
     "Sales Invoice": "public/js/sales_invoice.js",
-    "Purchase Invoice": "public/js/purchase_invoice.js"
+    "Purchase Invoice": "public/js/purchase_invoice.js",
+    "Journal Entry": "public/js/journal_entry.js"
 }
 
 

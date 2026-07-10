@@ -5,7 +5,9 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "enable_purchase_invoice_approval_workflow"
+  "enable_purchase_invoice_approval_workflow",
+  "enable_sales_invoice_approval_workflow",
+  "enable_journal_entry_approval_workflow"
  ],
  "fields": [
   {
@@ -13,6 +15,18 @@
    "fieldname": "enable_purchase_invoice_approval_workflow",
    "fieldtype": "Check",
    "label": "Enable Purchase Invoice Approval Workflow"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_sales_invoice_approval_workflow",
+   "fieldtype": "Check",
+   "label": "Enable Sales Invoice Approval Workflow"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_journal_entry_approval_workflow",
+   "fieldtype": "Check",
+   "label": "Enable Journal Entry Approval Workflow"
   }
  ],
  "index_web_pages_for_search": 1,
