@@ -9,15 +9,16 @@ frappe.ui.form.on('Sales Invoice', {
         frm.trigger('check_b2b_customer');
     },
     check_b2b_customer: function(frm) {
-        if (frm.doc.customer && frm.doc.is_return === 1) {
+        let current_val = frm.doc.custom_is_b2b_customer ? 1 : 0;
+        if (frm.doc.customer) {
             frappe.db.get_value('Customer', frm.doc.customer, 'gstin', (r) => {
                 let target_val = (r && r.gstin) ? 1 : 0;
-                if (frm.doc.custom_is_b2b_customer !== target_val) {
+                if (current_val !== target_val) {
                     frm.set_value('custom_is_b2b_customer', target_val);
                 }
             });
         } else {
-            if (frm.doc.custom_is_b2b_customer !== 0) {
+            if (current_val !== 0) {
                 frm.set_value('custom_is_b2b_customer', 0);
             }
         }
