@@ -209,6 +209,15 @@ def setup_journal_entry_workflow():
         "allowed": "All",
         "condition": "doc.custom_je_pending_approval == 1"
     })
+    # Allow ALL users to directly submit JEs that don't involve a suspense account
+    workflow.append("transitions", {
+        "state": "Draft",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "All",
+        "condition": "doc.custom_je_pending_approval == 0"
+    })
+    # Accounts Approver can also submit directly (kept for approver convenience)
     workflow.append("transitions", {
         "state": "Draft",
         "action": "Submit",
@@ -235,6 +244,14 @@ def setup_journal_entry_workflow():
         "allowed": "All",
         "condition": "doc.custom_je_pending_approval == 1"
     })
+    # Allow ALL users to submit from Pending Fix when no suspense approval needed
+    workflow.append("transitions", {
+        "state": "Pending Fix",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "All",
+        "condition": "doc.custom_je_pending_approval == 0"
+    })
     workflow.append("transitions", {
         "state": "Pending Fix",
         "action": "Submit",
@@ -248,6 +265,14 @@ def setup_journal_entry_workflow():
         "next_state": "Pending Approval",
         "allowed": "All",
         "condition": "doc.custom_je_pending_approval == 1"
+    })
+    # Allow ALL users to submit from Rejected state when no suspense approval needed
+    workflow.append("transitions", {
+        "state": "Rejected",
+        "action": "Submit",
+        "next_state": "Submitted",
+        "allowed": "All",
+        "condition": "doc.custom_je_pending_approval == 0"
     })
     workflow.append("transitions", {
         "state": "Rejected",
