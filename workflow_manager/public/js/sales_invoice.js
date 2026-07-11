@@ -9,6 +9,11 @@ frappe.ui.form.on('Sales Invoice', {
         frm.trigger('check_b2b_customer');
     },
     check_b2b_customer: function(frm) {
+        // Only auto-set on draft docs. For submitted/cancelled docs the value is
+        // already persisted in the DB — calling frm.set_value() here would mark
+        // the form dirty and show the "Not Saved" indicator on every page load.
+        if (frm.doc.docstatus !== 0) return;
+
         let current_val = frm.doc.custom_is_b2b_customer ? 1 : 0;
         if (frm.doc.customer) {
             frappe.db.get_value('Customer', frm.doc.customer, 'gstin', (r) => {
