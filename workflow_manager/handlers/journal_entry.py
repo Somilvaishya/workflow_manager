@@ -43,6 +43,8 @@ def before_submit(doc):
     if not settings.enable_journal_entry_approval_workflow:
         return
 
+    approver_role = settings.approver_role or "Accounts Approver"
+
     # Only enforce approval flow for JEs that debit from a Suspense Account
     if doc.custom_je_pending_approval == 1:
         db_state = frappe.db.get_value("Journal Entry", doc.name, "workflow_state") if doc.name else None
@@ -51,15 +53,15 @@ def before_submit(doc):
         if db_state != "Approved":
             frappe.throw(
                 "Journal Entry requires approval because it debits from a Suspense Account. "
-                "Please use 'Submit for Approval' and wait for Accounts Approver to approve.",
+                "Please use 'Submit for Approval' and wait for the approver to approve.",
                 frappe.ValidationError
             )
 
-        # Only Accounts Approver (or Administrator) can actually submit a suspense-debit JE
+        # Only the approver role (or Administrator) can submit a suspense-debit JE
         user_roles = frappe.get_roles(frappe.session.user)
-        if "Accounts Approver" not in user_roles and frappe.session.user != "Administrator":
+        if approver_role not in user_roles and frappe.session.user != "Administrator":
             frappe.throw(
-                "Only users with the Accounts Approver role can submit a Journal Entry "
+                f"Only users with the '{approver_role}' role can submit a Journal Entry "
                 "that debits from a Suspense Account.",
                 frappe.PermissionError
             )

@@ -22,25 +22,29 @@ def before_submit(doc):
     # Recalculate fields to ensure integrity before submit
     populate_workflow_fields(doc)
 
+    settings = frappe.get_single("Workflow Settings")
+    approver_role = settings.approver_role or "Accounts Approver"
+
     if doc.is_return == 1 and doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0:
         # Check database value of the workflow state to see what it was before transition
         db_state = frappe.db.get_value("Sales Invoice", doc.name, "workflow_state") if doc.name else None
-        
+
         if db_state != "Pending Debit Note Approval":
             frappe.throw(
                 "Sales Invoice Return (B2B) with missing Customer Debit Note details "
                 "requires approval. Please submit for approval or provide Debit Note details.",
                 frappe.ValidationError
             )
-        
-        # Enforce that only a user with the Accounts Approver role (or Administrator) can submit it
+
+        # Enforce that only the approver role (or Administrator) can submit it
         user_roles = frappe.get_roles(frappe.session.user)
-        if "Accounts Approver" not in user_roles and frappe.session.user != "Administrator":
+        if approver_role not in user_roles and frappe.session.user != "Administrator":
             frappe.throw(
-                "Only users with the Accounts Approver role can approve and submit "
+                f"Only users with the '{approver_role}' role can approve and submit "
                 "this Sales Invoice Return.",
                 frappe.PermissionError
             )
+
 
 def populate_workflow_fields(doc):
     """

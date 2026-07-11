@@ -29,23 +29,31 @@ def before_submit(doc):
     if not settings.enable_purchase_invoice_approval_workflow:
         return
 
-    # If approval is required, ensure it was approved prior to submission
+    approver_role = settings.approver_role or "Accounts Approver"
+
+    # Only enforce approval flow for PIs that have items without a Purchase Order
     if doc.custom_wf_pending_approval == 1:
         db_state = frappe.db.get_value("Purchase Invoice", doc.name, "workflow_state") if doc.name else None
+
+        # Must be in Approved state before submission is allowed
         if db_state != "Approved":
             frappe.throw(
                 "Purchase Invoice requires approval because it contains items without a Purchase Order. "
-                "Please submit for approval before submitting.",
+                "Please use 'Submit for Approval' and wait for the approver to approve.",
                 frappe.ValidationError
             )
 
-    # Enforce role restriction on submit (must be Accounts Approver or Administrator)
-    user_roles = frappe.get_roles(frappe.session.user)
-    if "Accounts Approver" not in user_roles and frappe.session.user != "Administrator":
-        frappe.throw(
-            "Only users with the Accounts Approver role can submit this Purchase Invoice.",
-            frappe.PermissionError
-        )
+        # Only the approver role (or Administrator) can submit an approved no-PO PI
+        user_roles = frappe.get_roles(frappe.session.user)
+        if approver_role not in user_roles and frappe.session.user != "Administrator":
+            frappe.throw(
+                f"Only users with the '{approver_role}' role can submit a Purchase Invoice "
+                "that contains items without a Purchase Order.",
+                frappe.PermissionError
+            )
+
+    # For PO-linked or internal supplier PIs, any user can submit directly — no restriction.
+
 
 def populate_workflow_fields(doc):
     """
