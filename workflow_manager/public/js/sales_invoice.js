@@ -16,8 +16,13 @@ frappe.ui.form.on('Sales Invoice', {
 
         let current_val = frm.doc.custom_is_b2b_customer ? 1 : 0;
         if (frm.doc.customer) {
-            frappe.db.get_value('Customer', frm.doc.customer, 'gstin', (r) => {
-                let target_val = (r && r.gstin) ? 1 : 0;
+            frappe.db.get_value('Customer', frm.doc.customer, ['gstin', 'is_bns_internal_customer'], (r) => {
+                let gstin = (r && r.gstin) || frm.doc.billing_address_gstin || frm.doc.tax_id;
+                let is_internal = (r && r.is_bns_internal_customer) ? 1 : 0;
+                
+                // Internal customers skip the B2B approval flow — treat as non-B2B
+                let target_val = (gstin && !is_internal) ? 1 : 0;
+                
                 if (current_val !== target_val) {
                     frm.set_value('custom_is_b2b_customer', target_val);
                 }

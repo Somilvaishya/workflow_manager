@@ -56,7 +56,9 @@ def populate_workflow_fields(doc):
     """
     # 1. Check if the Customer is B2B (has GSTIN) AND is NOT an internal customer
     if doc.customer:
-        gstin = frappe.db.get_value("Customer", doc.customer, "gstin")
+        customer_gstin = frappe.db.get_value("Customer", doc.customer, "gstin")
+        # In ERPNext India compliance, GSTIN is often on the invoice itself
+        gstin = doc.get("billing_address_gstin") or doc.get("tax_id") or customer_gstin
         is_internal = bool(
             frappe.db.get_value("Customer", doc.customer, "is_bns_internal_customer")
         )
