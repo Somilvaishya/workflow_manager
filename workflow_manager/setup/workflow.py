@@ -50,17 +50,16 @@ def setup_workflow():
             doc.insert(ignore_permissions=True)
 
     approver_role = get_approver_role()
-    if normal_role is None:
-        normal_role = get_normal_role()
+    normal_role = get_normal_role()
 
     # 3. Create or update Sales Invoice Workflow
-    setup_sales_invoice_workflow(approver_role)
+    setup_sales_invoice_workflow(approver_role, normal_role)
 
     # 4. Create or update Purchase Invoice Workflow
-    setup_purchase_invoice_workflow(approver_role)
+    setup_purchase_invoice_workflow(approver_role, normal_role)
 
     # 5. Create or update Journal Entry Workflow
-    setup_journal_entry_workflow(approver_role)
+    setup_journal_entry_workflow(approver_role, normal_role)
 
 
 def setup_sales_invoice_workflow(approver_role=None, normal_role=None):
