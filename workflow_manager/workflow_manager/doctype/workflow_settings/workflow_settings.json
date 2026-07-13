@@ -9,7 +9,8 @@
   "enable_sales_invoice_approval_workflow",
   "enable_journal_entry_approval_workflow",
   "section_break_approver",
-  "approver_role"
+  "approver_role",
+  "normal_role"
  ],
  "fields": [
   {
@@ -42,6 +43,15 @@
    "label": "Approver Role",
    "options": "Role",
    "description": "Role that can approve/submit restricted documents. Changing this will recreate all active workflows with the new role.",
+   "reqd": 1
+  },
+  {
+   "default": "All",
+   "fieldname": "normal_role",
+   "fieldtype": "Link",
+   "label": "Normal Role",
+   "options": "Role",
+   "description": "Role that can initiate and submit unrestricted documents. Changing this will recreate all active workflows with the new role.",
    "reqd": 1
   }
  ],

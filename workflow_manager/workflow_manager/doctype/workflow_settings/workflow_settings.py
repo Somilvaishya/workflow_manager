@@ -19,6 +19,7 @@ class WorkflowSettings(Document):
         3. Clears Frappe cache so changes are visible without a server restart.
         """
         approver_role = self.approver_role or "Accounts Approver"
+        normal_role = self.normal_role or "All"
 
         from workflow_manager.setup.workflow import (
             setup_sales_invoice_workflow,
@@ -26,13 +27,13 @@ class WorkflowSettings(Document):
             setup_journal_entry_workflow,
         )
 
-        # Recreate workflows that are enabled (apply new role + ensure correct transitions)
+        # Recreate workflows that are enabled (apply new roles + ensure correct transitions)
         if self.enable_sales_invoice_approval_workflow:
-            setup_sales_invoice_workflow(approver_role)
+            setup_sales_invoice_workflow(approver_role, normal_role)
         if self.enable_purchase_invoice_approval_workflow:
-            setup_purchase_invoice_workflow(approver_role)
+            setup_purchase_invoice_workflow(approver_role, normal_role)
         if self.enable_journal_entry_approval_workflow:
-            setup_journal_entry_workflow(approver_role)
+            setup_journal_entry_workflow(approver_role, normal_role)
 
         # Toggle is_active for all workflows based on enable checkboxes
         for field, workflow_name in WORKFLOW_MAP.items():

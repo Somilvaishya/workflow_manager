@@ -3,6 +3,17 @@ import frappe
 DEFAULT_APPROVER_ROLE = "Accounts Approver"
 
 
+DEFAULT_NORMAL_ROLE = "All"
+
+
+def get_normal_role():
+    try:
+        settings = frappe.get_single("Workflow Settings")
+        return settings.normal_role or DEFAULT_NORMAL_ROLE
+    except Exception:
+        return DEFAULT_NORMAL_ROLE
+
+
 def get_approver_role():
     """Return the approver role from Workflow Settings, falling back to default."""
     try:
@@ -39,6 +50,8 @@ def setup_workflow():
             doc.insert(ignore_permissions=True)
 
     approver_role = get_approver_role()
+    if normal_role is None:
+        normal_role = get_normal_role()
 
     # 3. Create or update Sales Invoice Workflow
     setup_sales_invoice_workflow(approver_role)
@@ -50,9 +63,11 @@ def setup_workflow():
     setup_journal_entry_workflow(approver_role)
 
 
-def setup_sales_invoice_workflow(approver_role=None):
+def setup_sales_invoice_workflow(approver_role=None, normal_role=None):
     if approver_role is None:
         approver_role = get_approver_role()
+    if normal_role is None:
+        normal_role = get_normal_role()
 
     workflow_name = "Sales Invoice Return Workflow"
 
@@ -67,9 +82,9 @@ def setup_sales_invoice_workflow(approver_role=None):
     workflow.workflow_state_field = "workflow_state"
 
     # States
-    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Pending Debit Note Approval", "doc_status": "0", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": approver_role})
     workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
     workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
@@ -90,7 +105,7 @@ def setup_sales_invoice_workflow(approver_role=None):
         "state": "Draft",
         "action": "Submit",
         "next_state": "Pending Debit Note Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": needs_approval
     })
     # Draft → Submitted (everything else: normal SI, B2C return, internal customer, complete debit note)
@@ -98,7 +113,7 @@ def setup_sales_invoice_workflow(approver_role=None):
         "state": "Draft",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": no_approval_needed
     })
     # Pending Debit Note Approval → Submitted (approver approves)
@@ -120,7 +135,7 @@ def setup_sales_invoice_workflow(approver_role=None):
         "state": "Pending Fix",
         "action": "Submit",
         "next_state": "Pending Debit Note Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": needs_approval
     })
     # Pending Fix → Submitted (debit note now complete or conditions changed)
@@ -128,7 +143,7 @@ def setup_sales_invoice_workflow(approver_role=None):
         "state": "Pending Fix",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": no_approval_needed
     })
     # Submitted → Cancelled
@@ -142,9 +157,11 @@ def setup_sales_invoice_workflow(approver_role=None):
     workflow.insert(ignore_permissions=True)
 
 
-def setup_purchase_invoice_workflow(approver_role=None):
+def setup_purchase_invoice_workflow(approver_role=None, normal_role=None):
     if approver_role is None:
         approver_role = get_approver_role()
+    if normal_role is None:
+        normal_role = get_normal_role()
 
     workflow_name = "Purchase Invoice Approval"
 
@@ -159,9 +176,9 @@ def setup_purchase_invoice_workflow(approver_role=None):
     workflow.workflow_state_field = "workflow_state"
 
     # States
-    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Pending Approval", "doc_status": "0", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": approver_role})
     workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
     workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
@@ -173,7 +190,7 @@ def setup_purchase_invoice_workflow(approver_role=None):
         "state": "Draft",
         "action": "Submit for Approval",
         "next_state": "Pending Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_wf_pending_approval == 1"
     })
     # Draft → Submitted (PO-linked or internal supplier — any user can submit directly)
@@ -181,7 +198,7 @@ def setup_purchase_invoice_workflow(approver_role=None):
         "state": "Draft",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_wf_direct_submit == 1"
     })
     # Draft → Submitted (approver can also directly submit direct-submit PIs)
@@ -204,7 +221,7 @@ def setup_purchase_invoice_workflow(approver_role=None):
         "state": "Pending Fix",
         "action": "Submit for Approval",
         "next_state": "Pending Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_wf_pending_approval == 1"
     })
     # Pending Fix → Submitted (user fixed item, now has PO — direct submit)
@@ -212,7 +229,7 @@ def setup_purchase_invoice_workflow(approver_role=None):
         "state": "Pending Fix",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_wf_direct_submit == 1"
     })
     # Pending Approval → Approved
@@ -240,9 +257,11 @@ def setup_purchase_invoice_workflow(approver_role=None):
     workflow.insert(ignore_permissions=True)
 
 
-def setup_journal_entry_workflow(approver_role=None):
+def setup_journal_entry_workflow(approver_role=None, normal_role=None):
     if approver_role is None:
         approver_role = get_approver_role()
+    if normal_role is None:
+        normal_role = get_normal_role()
 
     workflow_name = "Journal Entry Approval Workflow"
 
@@ -257,11 +276,11 @@ def setup_journal_entry_workflow(approver_role=None):
     workflow.workflow_state_field = "workflow_state"
 
     # States
-    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Draft", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Pending Approval", "doc_status": "0", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Rejected", "doc_status": "0", "allow_edit": "All"})
+    workflow.append("states", {"state": "Rejected", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
     workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
 
@@ -272,7 +291,7 @@ def setup_journal_entry_workflow(approver_role=None):
         "state": "Draft",
         "action": "Submit for Approval",
         "next_state": "Pending Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_je_pending_approval == 1"
     })
     # Draft → Submitted (no suspense account — any user can submit)
@@ -280,7 +299,7 @@ def setup_journal_entry_workflow(approver_role=None):
         "state": "Draft",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_je_pending_approval == 0"
     })
     # Approver can also directly submit non-suspense JEs from Draft
@@ -317,7 +336,7 @@ def setup_journal_entry_workflow(approver_role=None):
         "state": "Pending Fix",
         "action": "Submit for Approval",
         "next_state": "Pending Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_je_pending_approval == 1"
     })
     # Pending Fix → Submitted (no suspense — any user can submit)
@@ -325,7 +344,7 @@ def setup_journal_entry_workflow(approver_role=None):
         "state": "Pending Fix",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_je_pending_approval == 0"
     })
     # Approver can also submit non-suspense from Pending Fix
@@ -341,7 +360,7 @@ def setup_journal_entry_workflow(approver_role=None):
         "state": "Rejected",
         "action": "Submit for Approval",
         "next_state": "Pending Approval",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_je_pending_approval == 1"
     })
     # Rejected → Submitted (no suspense — any user can submit)
@@ -349,7 +368,7 @@ def setup_journal_entry_workflow(approver_role=None):
         "state": "Rejected",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": "All",
+        "allowed": normal_role,
         "condition": "doc.custom_je_pending_approval == 0"
     })
     # Approver can also submit non-suspense from Rejected
