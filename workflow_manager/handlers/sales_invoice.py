@@ -50,13 +50,18 @@ def populate_workflow_fields(doc):
     """
     Determines if the customer is B2B and whether the debit note details are complete.
     Populates:
-      - custom_is_b2b_customer: 1 if customer has GSTIN, 0 otherwise
-      - custom_debit_note_complete: 1 if debit note fields are complete, 0 otherwise
+      - custom_is_b2b_customer: 1 if customer has GSTIN AND is NOT an internal customer, 0 otherwise
+        (Internal customers bypass the debit-note approval flow entirely.)
+      - custom_debit_note_complete: 1 if all three debit note fields are filled, 0 otherwise
     """
-    # 1. Check if the Customer is B2B (has GSTIN)
+    # 1. Check if the Customer is B2B (has GSTIN) AND is NOT an internal customer
     if doc.customer:
         gstin = frappe.db.get_value("Customer", doc.customer, "gstin")
-        doc.custom_is_b2b_customer = 1 if gstin else 0
+        is_internal = bool(
+            frappe.db.get_value("Customer", doc.customer, "is_bns_internal_customer")
+        )
+        # Internal customers skip the B2B approval flow — treat as non-B2B for workflow
+        doc.custom_is_b2b_customer = 1 if (gstin and not is_internal) else 0
     else:
         doc.custom_is_b2b_customer = 0
 

@@ -74,22 +74,32 @@ def setup_sales_invoice_workflow(approver_role=None):
     workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
     workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
 
+    # Approval needed condition:
+    # - Must be a return (is_return == 1)
+    # - AND B2B customer (custom_is_b2b_customer == 1, which already excludes internal customers)
+    # - AND debit note incomplete (custom_debit_note_complete == 0)
+    needs_approval = (
+        "doc.is_return == 1 and doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0"
+    )
+    no_approval_needed = f"not ({needs_approval})"
+
     # Transitions
-    # Draft → Pending Debit Note Approval (B2B return missing debit note)
+
+    # Draft → Pending Debit Note Approval (B2B return, incomplete debit note, non-internal customer)
     workflow.append("transitions", {
         "state": "Draft",
         "action": "Submit",
         "next_state": "Pending Debit Note Approval",
         "allowed": "All",
-        "condition": "doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0"
+        "condition": needs_approval
     })
-    # Draft → Submitted (all other cases — non-B2B or debit note complete)
+    # Draft → Submitted (everything else: normal SI, B2C return, internal customer, complete debit note)
     workflow.append("transitions", {
         "state": "Draft",
         "action": "Submit",
         "next_state": "Submitted",
         "allowed": "All",
-        "condition": "not (doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0)"
+        "condition": no_approval_needed
     })
     # Pending Debit Note Approval → Submitted (approver approves)
     workflow.append("transitions", {
@@ -111,15 +121,15 @@ def setup_sales_invoice_workflow(approver_role=None):
         "action": "Submit",
         "next_state": "Pending Debit Note Approval",
         "allowed": "All",
-        "condition": "doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0"
+        "condition": needs_approval
     })
-    # Pending Fix → Submitted (debit note now complete)
+    # Pending Fix → Submitted (debit note now complete or conditions changed)
     workflow.append("transitions", {
         "state": "Pending Fix",
         "action": "Submit",
         "next_state": "Submitted",
         "allowed": "All",
-        "condition": "not (doc.custom_is_b2b_customer == 1 and doc.custom_debit_note_complete == 0)"
+        "condition": no_approval_needed
     })
     # Submitted → Cancelled
     workflow.append("transitions", {
