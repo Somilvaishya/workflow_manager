@@ -427,9 +427,9 @@
   "doctype": "Workflow",
   "document_type": "Sales Invoice",
   "is_active": 1,
-  "modified": "2026-07-17 16:53:58.193957",
+  "modified": "2026-07-17 17:15:07.156169",
   "name": "Sales Invoice Return Workflow",
-  "override_status": 0,
+  "override_status": 1,
   "send_email_alert": 0,
   "states": [
    {
@@ -631,9 +631,9 @@
   "doctype": "Workflow",
   "document_type": "Purchase Invoice",
   "is_active": 1,
-  "modified": "2026-07-17 16:10:48.804413",
+  "modified": "2026-07-17 17:15:07.145292",
   "name": "Purchase Invoice Approval",
-  "override_status": 0,
+  "override_status": 1,
   "send_email_alert": 0,
   "states": [
    {
@@ -861,9 +861,9 @@
   "doctype": "Workflow",
   "document_type": "Journal Entry",
   "is_active": 1,
-  "modified": "2026-07-17 16:31:58.425488",
+  "modified": "2026-07-17 17:15:07.157551",
   "name": "Journal Entry Approval Workflow",
-  "override_status": 0,
+  "override_status": 1,
   "send_email_alert": 0,
   "states": [
    {
