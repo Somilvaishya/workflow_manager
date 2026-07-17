@@ -40,3 +40,7 @@ doctype_js = {
 # ------------------------------
 after_install = "workflow_manager.setup.install.after_install"
 after_migrate = "workflow_manager.setup.install.after_install"
+
+# Fixtures
+# --------
+fixtures = ["Workflow", "Workflow State", "Workflow Action Master"]
