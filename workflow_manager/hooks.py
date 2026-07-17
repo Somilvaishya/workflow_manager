@@ -40,3 +40,7 @@ doctype_js = {
 # ------------------------------
 after_install = "workflow_manager.setup.install.after_install"
 after_migrate = "workflow_manager.setup.install.after_install"
+
+# Fixtures
+# --------
+fixtures = ["Workflow", "Workflow State", "Workflow Action Master", {"dt": "Property Setter", "filters": [["doc_type", "in", ("Purchase Invoice", "Sales Invoice", "Journal Entry")], ["field_name", "=", "workflow_state"]]}]
