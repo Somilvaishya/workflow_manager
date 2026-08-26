@@ -5,6 +5,10 @@ app_description = "Workflow Manager App"
 app_email = "somil@example.com"
 app_license = "mit"
 
+# Includes in <head>
+# ------------------
+required_apps = ["erpnext"]
+
 # Document Events
 # ---------------
 doc_events = {
