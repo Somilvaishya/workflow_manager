@@ -6,7 +6,7 @@
   "is_active": 0,
   "modified": "2025-05-24 02:03:38.789003",
   "name": "Different PAN then Customer Approval",
-  "override_status": 0,
+  "override_status": 1,
   "send_email_alert": 0,
   "states": [],
   "transitions": [],
@@ -190,7 +190,7 @@
    {
     "action": "Cancel",
     "allow_self_approval": 1,
-    "allowed": "Accounts Manager",
+    "allowed": "All",
     "condition": null,
     "next_state": "Cancelled",
     "parent": "Repack Maker Check (Accounts User)",
@@ -203,7 +203,7 @@
    {
     "action": "Cancel",
     "allow_self_approval": 1,
-    "allowed": "Accounts Manager",
+    "allowed": "All",
     "condition": null,
     "next_state": "Cancelled",
     "parent": "Repack Maker Check (Accounts User)",
@@ -394,7 +394,7 @@
    {
     "action": "Cancel",
     "allow_self_approval": 1,
-    "allowed": "Accounts Manager",
+    "allowed": "All",
     "condition": null,
     "next_state": "Cancelled",
     "parent": "PI (No PO Approval)",
@@ -407,7 +407,7 @@
    {
     "action": "Cancel",
     "allow_self_approval": 1,
-    "allowed": "Accounts Manager",
+    "allowed": "All",
     "condition": null,
     "next_state": "Cancelled",
     "parent": "PI (No PO Approval)",
@@ -427,7 +427,7 @@
   "doctype": "Workflow",
   "document_type": "Sales Invoice",
   "is_active": 1,
-  "modified": "2026-07-17 17:15:07.156169",
+  "modified": "2026-07-23 14:18:27.504661",
   "name": "Sales Invoice Return Workflow",
   "override_status": 1,
   "send_email_alert": 0,
@@ -449,7 +449,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "0",
     "is_optional_state": 0,
@@ -481,7 +481,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "0",
     "is_optional_state": 0,
@@ -497,7 +497,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "1",
     "is_optional_state": 0,
@@ -513,7 +513,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "2",
     "is_optional_state": 0,
@@ -631,7 +631,7 @@
   "doctype": "Workflow",
   "document_type": "Purchase Invoice",
   "is_active": 1,
-  "modified": "2026-07-17 17:15:07.145292",
+  "modified": "2026-07-23 14:18:29.539255",
   "name": "Purchase Invoice Approval",
   "override_status": 1,
   "send_email_alert": 0,
@@ -653,7 +653,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "0",
     "is_optional_state": 0,
@@ -685,7 +685,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "0",
     "is_optional_state": 0,
@@ -701,7 +701,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "1",
     "is_optional_state": 0,
@@ -717,7 +717,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "2",
     "is_optional_state": 0,
@@ -763,7 +763,7 @@
    {
     "action": "Submit",
     "allow_self_approval": 1,
-    "allowed": "Accounts Approver",
+    "allowed": "All",
     "condition": "doc.custom_wf_direct_submit == 1",
     "next_state": "Submitted",
     "parent": "Purchase Invoice Approval",
@@ -828,7 +828,7 @@
    {
     "action": "Submit",
     "allow_self_approval": 1,
-    "allowed": "Accounts Approver",
+    "allowed": "All",
     "condition": null,
     "next_state": "Submitted",
     "parent": "Purchase Invoice Approval",
@@ -861,7 +861,7 @@
   "doctype": "Workflow",
   "document_type": "Journal Entry",
   "is_active": 1,
-  "modified": "2026-07-17 17:15:07.157551",
+  "modified": "2026-07-23 14:18:29.760162",
   "name": "Journal Entry Approval Workflow",
   "override_status": 1,
   "send_email_alert": 0,
@@ -883,7 +883,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "0",
     "is_optional_state": 0,
@@ -915,7 +915,7 @@
     "workflow_builder_id": null
    },
    {
-    "allow_edit": "Accounts Approver",
+    "allow_edit": "All",
     "avoid_status_override": 0,
     "doc_status": "0",
     "is_optional_state": 0,
@@ -986,6 +986,19 @@
     "allowed": "All",
     "condition": "doc.custom_je_pending_approval == 1",
     "next_state": "Pending Approval",
+    "parent": "Journal Entry Approval Workflow",
+    "parentfield": "transitions",
+    "parenttype": "Workflow",
+    "send_email_to_creator": 0,
+    "state": "Draft",
+    "workflow_builder_id": null
+   },
+   {
+    "action": "Submit",
+    "allow_self_approval": 1,
+    "allowed": "All",
+    "condition": "doc.custom_je_pending_approval == 0",
+    "next_state": "Submitted",
     "parent": "Journal Entry Approval Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
@@ -1072,6 +1085,19 @@
     "workflow_builder_id": null
    },
    {
+    "action": "Submit",
+    "allow_self_approval": 1,
+    "allowed": "All",
+    "condition": "doc.custom_je_pending_approval == 0",
+    "next_state": "Submitted",
+    "parent": "Journal Entry Approval Workflow",
+    "parentfield": "transitions",
+    "parenttype": "Workflow",
+    "send_email_to_creator": 0,
+    "state": "Pending Fix",
+    "workflow_builder_id": null
+   },
+   {
     "action": "Submit for Approval",
     "allow_self_approval": 1,
     "allowed": "All",
@@ -1100,7 +1126,20 @@
    {
     "action": "Submit",
     "allow_self_approval": 1,
-    "allowed": "Accounts Approver",
+    "allowed": "All",
+    "condition": "doc.custom_je_pending_approval == 0",
+    "next_state": "Submitted",
+    "parent": "Journal Entry Approval Workflow",
+    "parentfield": "transitions",
+    "parenttype": "Workflow",
+    "send_email_to_creator": 0,
+    "state": "Rejected",
+    "workflow_builder_id": null
+   },
+   {
+    "action": "Submit",
+    "allow_self_approval": 1,
+    "allowed": "All",
     "condition": null,
     "next_state": "Submitted",
     "parent": "Journal Entry Approval Workflow",

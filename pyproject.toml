@@ -4,16 +4,24 @@ authors = [
     { name = "Somil", email = "somil@example.com"}
 ]
 description = "Workflow Manager App"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    # "frappe~=15.0.0" # Installed and managed by bench.
+    # frappe and erpnext are installed and managed by bench, not pip.
+    # Version compatibility (v15+v16) is declared in [tool.bench.frappe-dependencies] below.
 ]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
+
+# Frappe ecosystem version compatibility declared per
+# https://docs.frappe.io/cloud/custom-apps/app-versioning/versioning
+# Picked up by bench and Frappe Cloud Marketplace to gate installs.
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
+erpnext = ">=15.0.0,<17.0.0"
 
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]
@@ -46,9 +54,9 @@ ignore = [
     "E402", # module level import not at top of file
     "E501", # line too long
     "E741", # ambiguous variable name
-    "F401", # "unused" imports
-    "F403", # can't detect undefined names from * import
-    "F405", # can't detect undefined names from * import
+    "F401", # unused imports
+    "F403", # cant detect undefined names from * import
+    "F405", # cant detect undefined names from * import
     "F722", # syntax error in forward type annotation
     "W191", # indentation contains tabs
 ]
