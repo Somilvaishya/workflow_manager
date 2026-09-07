@@ -1,50 +1,48 @@
 import frappe
 from frappe.model.document import Document
 
-
-WORKFLOW_MAP = {
-    "enable_sales_invoice_approval_workflow": "Sales Invoice Return Workflow",
-    "enable_purchase_invoice_approval_workflow": "Purchase Invoice Approval",
-    "enable_journal_entry_approval_workflow": "Journal Entry Approval Workflow",
-}
+from workflow_manager.setup.workflow import sync_workflow_active_flags
 
 
 class WorkflowSettings(Document):
     def on_update(self):
         """
         Called whenever Workflow Settings is saved.
-        1. Recreates all active workflows using the current approver_role — so any role
-           change takes effect immediately across all transitions.
-        2. Toggles is_active on each workflow document based on the enable checkboxes.
-        3. Clears Frappe cache so changes are visible without a server restart.
+
+        1. Rebuilds all three workflows from code when the approver/normal role
+           changed, or when "Rebuild Workflows On Save" was ticked. A rebuild
+           discards manual edits made in the Workflow UI, so it is never done for
+           a plain enable/disable toggle.
+        2. Keeps each workflow's is_active in step with its enable checkbox.
+        3. Clears the cache so the change is visible without a server restart.
         """
         approver_role = self.approver_role or "Accounts Approver"
         normal_role = self.normal_role or "All"
 
-        from workflow_manager.setup.workflow import (
-            setup_sales_invoice_workflow,
-            setup_purchase_invoice_workflow,
-            setup_journal_entry_workflow,
+        roles_changed = self.has_value_changed("approver_role") or self.has_value_changed(
+            "normal_role"
         )
+        # .get() so this still works on a site whose schema has not synced the field yet
+        rebuild_requested = bool(self.get("rebuild_workflows"))
 
-        # Recreate workflows that are enabled (apply new roles + ensure correct transitions)
-        if self.enable_sales_invoice_approval_workflow:
-            setup_sales_invoice_workflow(approver_role, normal_role)
-        if self.enable_purchase_invoice_approval_workflow:
-            setup_purchase_invoice_workflow(approver_role, normal_role)
-        if self.enable_journal_entry_approval_workflow:
-            setup_journal_entry_workflow(approver_role, normal_role)
+        if roles_changed or rebuild_requested:
+            from workflow_manager.setup.workflow import (
+                setup_journal_entry_workflow,
+                setup_purchase_invoice_workflow,
+                setup_sales_invoice_workflow,
+            )
 
-        # Toggle is_active for all workflows based on enable checkboxes
-        for field, workflow_name in WORKFLOW_MAP.items():
-            self._toggle_workflow(workflow_name, self.get(field))
+            # Rebuild all three (not just the enabled ones) so a disabled workflow
+            # does not keep a stale role and surprise everyone when re-enabled.
+            setup_sales_invoice_workflow(approver_role, normal_role, force=True)
+            setup_purchase_invoice_workflow(approver_role, normal_role, force=True)
+            setup_journal_entry_workflow(approver_role, normal_role, force=True)
+
+        # Toggle is_active for all workflows based on the enable checkboxes
+        sync_workflow_active_flags()
+
+        if rebuild_requested:
+            # One-shot switch: clear it so the next ordinary save is harmless.
+            self.db_set("rebuild_workflows", 0, update_modified=False)
 
         frappe.clear_cache()
-
-    def _toggle_workflow(self, workflow_name: str, enabled) -> None:
-        if not frappe.db.exists("Workflow", workflow_name):
-            return
-        is_active = 1 if enabled else 0
-        current = frappe.db.get_value("Workflow", workflow_name, "is_active")
-        if current != is_active:
-            frappe.db.set_value("Workflow", workflow_name, "is_active", is_active)

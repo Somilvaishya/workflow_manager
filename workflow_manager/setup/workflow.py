@@ -6,24 +6,87 @@ DEFAULT_APPROVER_ROLE = "Accounts Approver"
 DEFAULT_NORMAL_ROLE = "All"
 
 
-def get_normal_role():
+# Maps each Workflow Settings enable checkbox to the workflow it controls.
+# This is the single source of truth; Workflow Settings imports it from here.
+WORKFLOW_MAP = {
+    "enable_sales_invoice_approval_workflow": "Sales Invoice Return Workflow",
+    "enable_purchase_invoice_approval_workflow": "Purchase Invoice Approval",
+    "enable_journal_entry_approval_workflow": "Journal Entry Approval Workflow",
+}
+
+
+def get_settings():
+    """Return Workflow Settings, or None when it is not available yet (e.g. first install)."""
     try:
-        settings = frappe.get_single("Workflow Settings")
-        return settings.normal_role or DEFAULT_NORMAL_ROLE
+        return frappe.get_single("Workflow Settings")
     except Exception:
-        return DEFAULT_NORMAL_ROLE
+        return None
+
+
+def is_workflow_enabled(fieldname):
+    """Return True when the given Workflow Settings enable checkbox is ticked."""
+    settings = get_settings()
+    return bool(settings and settings.get(fieldname))
+
+
+def get_normal_role():
+    settings = get_settings()
+    return (settings and settings.normal_role) or DEFAULT_NORMAL_ROLE
 
 
 def get_approver_role():
     """Return the approver role from Workflow Settings, falling back to default."""
-    try:
-        settings = frappe.get_single("Workflow Settings")
-        return settings.approver_role or DEFAULT_APPROVER_ROLE
-    except Exception:
-        return DEFAULT_APPROVER_ROLE
+    settings = get_settings()
+    return (settings and settings.approver_role) or DEFAULT_APPROVER_ROLE
 
 
-def setup_workflow():
+def set_workflow_active(workflow_name, enabled):
+    """
+    Activate or deactivate a workflow, keeping Frappe's "one active workflow per
+    DocType" rule intact (Workflow.set_active() only runs on a full document save,
+    which we deliberately avoid here).
+    """
+    if not frappe.db.exists("Workflow", workflow_name):
+        return
+
+    is_active = 1 if enabled else 0
+    if frappe.db.get_value("Workflow", workflow_name, "is_active") == is_active:
+        return
+
+    doctype = frappe.db.get_value("Workflow", workflow_name, "document_type")
+
+    if is_active:
+        others = frappe.get_all(
+            "Workflow",
+            filters={"document_type": doctype, "is_active": 1, "name": ["!=", workflow_name]},
+            pluck="name",
+        )
+        for other in others:
+            frappe.db.set_value("Workflow", other, "is_active", 0)
+
+    frappe.db.set_value("Workflow", workflow_name, "is_active", is_active)
+    # get_workflow_name() caches the active workflow per DocType.
+    frappe.clear_cache(doctype=doctype)
+
+
+def sync_workflow_active_flags():
+    """Align every workflow's is_active flag with its Workflow Settings checkbox."""
+    settings = get_settings()
+    if not settings:
+        return
+    for fieldname, workflow_name in WORKFLOW_MAP.items():
+        set_workflow_active(workflow_name, settings.get(fieldname))
+
+
+def setup_workflow(force=False):
+    """
+    Provision the workflow states, actions and the three workflows.
+
+    force=False (used on migrate) only creates workflows that are missing, so
+    manual tuning done in the Workflow UI survives a `bench migrate`.
+    force=True (used on install, or from Workflow Settings) rebuilds them from
+    this file, discarding any manual edits.
+    """
     # 1. Create Workflow States if they don't exist
     states = [
         "Draft",
@@ -53,16 +116,19 @@ def setup_workflow():
     normal_role = get_normal_role()
 
     # 3. Create or update Sales Invoice Workflow
-    setup_sales_invoice_workflow(approver_role, normal_role)
+    setup_sales_invoice_workflow(approver_role, normal_role, force=force)
 
     # 4. Create or update Purchase Invoice Workflow
-    setup_purchase_invoice_workflow(approver_role, normal_role)
+    setup_purchase_invoice_workflow(approver_role, normal_role, force=force)
 
     # 5. Create or update Journal Entry Workflow
-    setup_journal_entry_workflow(approver_role, normal_role)
+    setup_journal_entry_workflow(approver_role, normal_role, force=force)
+
+    # 6. Make sure is_active matches the Workflow Settings checkboxes
+    sync_workflow_active_flags()
 
 
-def setup_sales_invoice_workflow(approver_role=None, normal_role=None):
+def setup_sales_invoice_workflow(approver_role=None, normal_role=None, force=True):
     if approver_role is None:
         approver_role = get_approver_role()
     if normal_role is None:
@@ -71,13 +137,19 @@ def setup_sales_invoice_workflow(approver_role=None, normal_role=None):
     workflow_name = "Sales Invoice Return Workflow"
 
     if frappe.db.exists("Workflow", workflow_name):
+        if not force:
+            # Never clobber an existing workflow on migrate — manual edits made in
+            # the Workflow UI must survive.
+            return
         frappe.delete_doc("Workflow", workflow_name, ignore_permissions=True)
 
     workflow = frappe.new_doc("Workflow")
     workflow.workflow_name = workflow_name
     workflow.document_type = "Sales Invoice"
-    workflow.is_active = 1
-    workflow.override_status = 0
+    # A brand-new workflow follows its Workflow Settings checkbox rather than
+    # switching itself on unconditionally.
+    workflow.is_active = 1 if is_workflow_enabled("enable_sales_invoice_approval_workflow") else 0
+    workflow.override_status = 1
     workflow.workflow_state_field = "workflow_state"
 
     # States
@@ -85,8 +157,8 @@ def setup_sales_invoice_workflow(approver_role=None, normal_role=None):
     workflow.append("states", {"state": "Pending Debit Note Approval", "doc_status": "0", "allow_edit": approver_role})
     workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
+    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": normal_role})
+    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": normal_role})
 
     # Approval needed condition:
     # - Must be a return (is_return == 1)
@@ -150,13 +222,13 @@ def setup_sales_invoice_workflow(approver_role=None, normal_role=None):
         "state": "Submitted",
         "action": "Cancel",
         "next_state": "Cancelled",
-        "allowed": approver_role
+        "allowed": normal_role
     })
 
     workflow.insert(ignore_permissions=True)
 
 
-def setup_purchase_invoice_workflow(approver_role=None, normal_role=None):
+def setup_purchase_invoice_workflow(approver_role=None, normal_role=None, force=True):
     if approver_role is None:
         approver_role = get_approver_role()
     if normal_role is None:
@@ -165,13 +237,19 @@ def setup_purchase_invoice_workflow(approver_role=None, normal_role=None):
     workflow_name = "Purchase Invoice Approval"
 
     if frappe.db.exists("Workflow", workflow_name):
+        if not force:
+            # Never clobber an existing workflow on migrate — manual edits made in
+            # the Workflow UI must survive.
+            return
         frappe.delete_doc("Workflow", workflow_name, ignore_permissions=True)
 
     workflow = frappe.new_doc("Workflow")
     workflow.workflow_name = workflow_name
     workflow.document_type = "Purchase Invoice"
-    workflow.is_active = 1
-    workflow.override_status = 0
+    # A brand-new workflow follows its Workflow Settings checkbox rather than
+    # switching itself on unconditionally.
+    workflow.is_active = 1 if is_workflow_enabled("enable_purchase_invoice_approval_workflow") else 0
+    workflow.override_status = 1
     workflow.workflow_state_field = "workflow_state"
 
     # States
@@ -179,8 +257,8 @@ def setup_purchase_invoice_workflow(approver_role=None, normal_role=None):
     workflow.append("states", {"state": "Pending Approval", "doc_status": "0", "allow_edit": approver_role})
     workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
+    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": normal_role})
+    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": normal_role})
 
     # Transitions
 
@@ -238,25 +316,25 @@ def setup_purchase_invoice_workflow(approver_role=None, normal_role=None):
         "next_state": "Approved",
         "allowed": approver_role
     })
-    # Approved → Submitted (only approver submits an approved PI)
+    # Approved → Submitted (any user may submit once it has been approved)
     workflow.append("transitions", {
         "state": "Approved",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": approver_role
+        "allowed": normal_role
     })
     # Submitted → Cancelled
     workflow.append("transitions", {
         "state": "Submitted",
         "action": "Cancel",
         "next_state": "Cancelled",
-        "allowed": approver_role
+        "allowed": normal_role
     })
 
     workflow.insert(ignore_permissions=True)
 
 
-def setup_journal_entry_workflow(approver_role=None, normal_role=None):
+def setup_journal_entry_workflow(approver_role=None, normal_role=None, force=True):
     if approver_role is None:
         approver_role = get_approver_role()
     if normal_role is None:
@@ -265,13 +343,19 @@ def setup_journal_entry_workflow(approver_role=None, normal_role=None):
     workflow_name = "Journal Entry Approval Workflow"
 
     if frappe.db.exists("Workflow", workflow_name):
+        if not force:
+            # Never clobber an existing workflow on migrate — manual edits made in
+            # the Workflow UI must survive.
+            return
         frappe.delete_doc("Workflow", workflow_name, ignore_permissions=True)
 
     workflow = frappe.new_doc("Workflow")
     workflow.workflow_name = workflow_name
     workflow.document_type = "Journal Entry"
-    workflow.is_active = 1
-    workflow.override_status = 0
+    # A brand-new workflow follows its Workflow Settings checkbox rather than
+    # switching itself on unconditionally.
+    workflow.is_active = 1 if is_workflow_enabled("enable_journal_entry_approval_workflow") else 0
+    workflow.override_status = 1
     workflow.workflow_state_field = "workflow_state"
 
     # States
@@ -280,8 +364,8 @@ def setup_journal_entry_workflow(approver_role=None, normal_role=None):
     workflow.append("states", {"state": "Pending Fix", "doc_status": "0", "allow_edit": normal_role})
     workflow.append("states", {"state": "Approved", "doc_status": "0", "allow_edit": approver_role})
     workflow.append("states", {"state": "Rejected", "doc_status": "0", "allow_edit": normal_role})
-    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": approver_role})
-    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": approver_role})
+    workflow.append("states", {"state": "Submitted", "doc_status": "1", "allow_edit": normal_role})
+    workflow.append("states", {"state": "Cancelled", "doc_status": "2", "allow_edit": normal_role})
 
     # Transitions
 
@@ -378,19 +462,19 @@ def setup_journal_entry_workflow(approver_role=None, normal_role=None):
         "allowed": approver_role,
         "condition": "doc.custom_je_pending_approval == 0"
     })
-    # Approved → Submitted (only approver submits after approval)
+    # Approved → Submitted (any user may submit once it has been approved)
     workflow.append("transitions", {
         "state": "Approved",
         "action": "Submit",
         "next_state": "Submitted",
-        "allowed": approver_role
+        "allowed": normal_role
     })
     # Submitted → Cancelled
     workflow.append("transitions", {
         "state": "Submitted",
         "action": "Cancel",
         "next_state": "Cancelled",
-        "allowed": approver_role
+        "allowed": normal_role
     })
 
     workflow.insert(ignore_permissions=True)
