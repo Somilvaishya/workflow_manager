@@ -10,7 +10,9 @@
   "enable_journal_entry_approval_workflow",
   "section_break_approver",
   "approver_role",
-  "normal_role"
+  "normal_role",
+  "section_break_maintenance",
+  "rebuild_workflows"
  ],
  "fields": [
   {
@@ -53,12 +55,24 @@
    "options": "Role",
    "description": "Role that can initiate and submit unrestricted documents. Changing this will recreate all active workflows with the new role.",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_maintenance",
+   "fieldtype": "Section Break",
+   "label": "Maintenance"
+  },
+  {
+   "default": "0",
+   "fieldname": "rebuild_workflows",
+   "fieldtype": "Check",
+   "label": "Rebuild Workflows On Save",
+   "description": "Tick and save to regenerate all three workflows from the app code. This DISCARDS any manual changes made in the Workflow UI. The checkbox clears itself after the rebuild."
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-11 17:00:00.000000",
+ "modified": "2026-09-07 23:45:00.000000",
  "modified_by": "Administrator",
  "module": "Workflow Manager",
  "name": "Workflow Settings",
