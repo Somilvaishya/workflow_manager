@@ -42,6 +42,7 @@ doctype_js = {
 
 # Installation & Migration Hooks
 # ------------------------------
+before_install = "workflow_manager.setup.install.before_install"
 after_install = "workflow_manager.setup.install.after_install"
 after_migrate = "workflow_manager.setup.install.after_migrate"
 

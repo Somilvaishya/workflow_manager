@@ -25,7 +25,10 @@ class WorkflowSettings(Document):
         # .get() so this still works on a site whose schema has not synced the field yet
         rebuild_requested = bool(self.get("rebuild_workflows"))
 
-        if roles_changed or rebuild_requested:
+        # During install the first save of this Single comes from Frappe's init_singles, before
+        # after_install has created the Workflow States/Actions these workflows link to (the
+        # default roles also read as "changed" from empty). after_install builds them instead.
+        if (roles_changed or rebuild_requested) and not frappe.flags.in_install:
             from workflow_manager.setup.workflow import (
                 setup_journal_entry_workflow,
                 setup_purchase_invoice_workflow,
