@@ -1,5 +1,11 @@
 from workflow_manager.setup.custom_fields import setup_custom_fields
-from workflow_manager.setup.workflow import setup_workflow
+from workflow_manager.setup.workflow import DEFAULT_APPROVER_ROLE, ensure_role, setup_workflow
+
+
+def before_install():
+    """The approver role must exist before install initialises Workflow Settings, whose
+    approver_role Link defaults to it; a fresh site does not have it."""
+    ensure_role(DEFAULT_APPROVER_ROLE)
 
 
 def after_install():

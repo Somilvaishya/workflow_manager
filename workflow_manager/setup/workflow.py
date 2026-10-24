@@ -34,6 +34,14 @@ def get_normal_role():
     return (settings and settings.normal_role) or DEFAULT_NORMAL_ROLE
 
 
+def ensure_role(role_name):
+    """Create a desk Role when it is missing; the workflows link to it in states and transitions."""
+    if role_name and not frappe.db.exists("Role", role_name):
+        frappe.get_doc({"doctype": "Role", "role_name": role_name, "desk_access": 1}).insert(
+            ignore_permissions=True
+        )
+
+
 def get_approver_role():
     """Return the approver role from Workflow Settings, falling back to default."""
     settings = get_settings()
@@ -114,6 +122,7 @@ def setup_workflow(force=False):
 
     approver_role = get_approver_role()
     normal_role = get_normal_role()
+    ensure_role(approver_role)
 
     # 3. Create or update Sales Invoice Workflow
     setup_sales_invoice_workflow(approver_role, normal_role, force=force)
